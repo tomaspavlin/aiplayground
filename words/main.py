@@ -3,16 +3,20 @@ import test
 import backpropagation
 import numpy as np
 import patterns
+import matplotlib.pyplot as plt
 
 from nn import NN
 
 eta = 0.2
 correctRati = 0.6
-iterations = 100000
+iterations = 10000
 test_after = 1000
 
 # initialize neural network
-net = NN([30, 5, 8])
+net = NN([30, 8, 8])
+
+corr_arr = []
+incorr_arr = []
 
 # train nn
 for iteration in range(iterations):
@@ -32,6 +36,14 @@ for iteration in range(iterations):
         print "Correct test:", corr
         print "Incorre test:", incorr
 
+        corr_arr.append(corr)
+        incorr_arr.append(incorr)
+
+
+plt.plot(corr_arr,)
+plt.plot(incorr_arr)
+plt.ylim(0, 1)
+plt.show()
 
 # user interaction with network
 print "\nNeural network training ended."

@@ -1,6 +1,6 @@
 import patterns
 
-cycles = 100
+cycles = 200
 
 
 def _compute_difference(o1, o2):
