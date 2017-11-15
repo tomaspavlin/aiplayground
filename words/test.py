@@ -1,9 +1,11 @@
-from words import patterns
+import patterns
 
 cycles = 100
 
+
 def _compute_difference(o1, o2):
     return sum([pow(a - b, 2) for a, b in zip(o1, o2)])
+
 
 def test_network_for_correct(net):
     ret = 0
@@ -16,6 +18,7 @@ def test_network_for_correct(net):
 
     ret /= cycles
     return ret
+
 
 def test_network_for_incorrect(net):
     ret = 0

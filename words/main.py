@@ -4,7 +4,7 @@ import backpropagation
 import numpy as np
 import patterns
 
-from words.nn import NN
+from nn import NN
 
 eta = 0.2
 correctRati = 0.6

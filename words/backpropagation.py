@@ -1,6 +1,6 @@
 import numpy as np
 
-from words.nn import NN
+from nn import NN
 
 
 def update_net(net, x, y, eta):
