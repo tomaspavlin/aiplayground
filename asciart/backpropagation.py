@@ -18,11 +18,11 @@ def backprop(net, x, y):
     y = np.array([[a] for a in y])
 
     # backward
-    delta = (net.potentials[-1] - y) * NN.sigmoid_prime(net.potentialsZ[-1])
+    delta = (net.potentials[-1] - y) * net.sigmoid_prime(net.potentialsZ[-1])
     delta_w[-1] = np.dot(delta, net.potentials[-2].transpose())
 
     for l in xrange(2, len(net.weights) + 1):
-        delta = np.dot(net.weights[-l + 1].transpose(), delta) * NN.sigmoid_prime(net.potentialsZ[-l])
+        delta = np.dot(net.weights[-l + 1].transpose(), delta) * net.sigmoid_prime(net.potentialsZ[-l])
         delta_w[-l] = np.dot(delta, net.potentials[-l - 1].transpose())
 
     return delta_w

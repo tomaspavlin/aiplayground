@@ -17,17 +17,27 @@ class NN:
         self.potentials = [np.zeros((n, 1)) for n in self.layerSizes]
         self.potentialsZ = [np.zeros((n, 1)) for n in self.layerSizes]
 
-    @staticmethod
-    def sigmoid(z):
-        """The sigmoid function."""
-        return 1.0 / (1.0 + np.exp(-z))
+        # init lambda
+        self.lambdaParam = 1
 
-    @staticmethod
-    def sigmoid_prime(z):
+    def setLambda(self, val = 1):
+        self.lambdaParam = val
+
+    def getLambda(self):
+        return self.lambdaParam
+
+    def sigmoid(self, z):
+        """The sigmoid function."""
+        return 1.0 / (1.0 + np.exp(-z * self.lambdaParam))
+
+    def sigmoid_prime(self, z):
         """Derivative of the sigmoid function."""
-        return NN.sigmoid(z) * (1 - NN.sigmoid(z))
+        return self.sigmoid(z) * (1 - self.sigmoid(z))
 
     def propagate(self, input):
+        # HACK, const
+        input.append(1)
+
         # vector to matrix
         input = np.array([[a] for a in input])
         #input.reshape((len(input), 1))
@@ -40,8 +50,8 @@ class NN:
             left = self.potentials[wi]
 
             z = np.dot(w, left)
-            a = NN.sigmoid(z)
-            right = NN.sigmoid(z)
+            a = self.sigmoid(z)
+            right = self.sigmoid(z)
 
             self.potentials[wi+1] = right
             self.potentialsZ[wi+1] = z

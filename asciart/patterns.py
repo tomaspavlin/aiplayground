@@ -5,8 +5,8 @@ import os
 # using 6x14 images
 
 chars = ['/', '\\', '|', '-', '_', '^', ' ']
-
-space_treshold = 0.5
+samplesDirectory = "imgs/src"
+space_treshold = 0.6
 
 def get_pattern():
     c = np.random.randint(len(chars))
@@ -17,7 +17,7 @@ def get_pattern():
 
 
 def chari2randin(c):
-    dir = "imgs/{0}/".format(c)
+    dir = samplesDirectory + "/{0}/".format(c)
     files = os.listdir(dir)
     file = files[np.random.randint(len(files))]
 
