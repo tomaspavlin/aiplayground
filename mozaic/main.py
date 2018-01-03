@@ -10,20 +10,23 @@ import image
 from nn import NN
 import os
 
-eta = 0.2
-iterations = 50000
-test_after = 2000
+population_size = 5
+
+eta = 0.3
+iterations = 20000
+test_after = 1000
 
 lambda1 = 1
 
-lambda2After = 20000
-lambda2 = 1#0
-eta2 = 0.02
+lambda2After = iterations / 2 #50000
+lambda2 = 10#0
+eta2 = 0.1
 
 
-# works with images 6x14=84
+# works with tile sizes 10x10=100
 # initialize neural network
-hidden = (4, 8)
+hidden = (5, 8)
+#hidden = (20)
 net = NN([100,
           hidden[0], hidden[1],
           100])
@@ -48,9 +51,6 @@ print "The initiated neuralnet with {0} neurons in hidden layers can recognize u
 
 # train nn
 for iteration in range(iterations + 1):
-    # get training pattern (input and output)
-    pat = patterns.get_random_pattern()
-    i = o = pat
 
     if iteration == lambda2After:
         #net.setLambda(lambda2)
@@ -64,8 +64,17 @@ for iteration in range(iterations + 1):
         net.setLambda(newLambda)
 
 
+    # get training pattern (input and output)
+    pats = []
+    for i in range(population_size):
+        pat = patterns.get_random_pattern()
+        pats.append((pat, pat))
+
+    #i = o = pat
+
     # backpropagate the pattern in the network
-    backpropagation.update_net(net, i, o, eta)
+    #backpropagation.update_net(net, i, o, eta)
+    backpropagation.update_net_n(net, pats, eta)
 
 
 

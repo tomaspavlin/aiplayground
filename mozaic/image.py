@@ -1,6 +1,7 @@
 import numpy as np
 from PIL import Image
 import os
+import patterns
 
 tile_w = 10
 tile_h = 10
@@ -20,7 +21,7 @@ def inputs2image(inputs, width, height, round = True):
         inputs = _round_inputs(inputs)
 
     img_data = np.zeros((height, width, 3), dtype=np.uint8)
-
+    is_standard = [patterns.is_standard_tile(input) for input in inputs]
 
     inputs_i = 0
     for ii in xrange(0, height, tile_h):
@@ -29,7 +30,8 @@ def inputs2image(inputs, width, height, round = True):
             for y in range(ii, ii + tile_h):
                 for x in range(i, i + tile_w):
                     val = inputs[inputs_i][inputs_ii] * 255
-                    img_data[y, x] = [val,val,val]
+                    color = [255, val, val] if is_standard[inputs_i] else [val, val, val]
+                    img_data[y, x] = color
                     inputs_ii += 1
             inputs_i += 1
 

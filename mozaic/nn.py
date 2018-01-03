@@ -36,7 +36,7 @@ class NN:
 
     def propagate(self, input):
         # HACK, const
-        # input.append(1))
+        # input.append(1)
 
         # vector to matrix
         input = np.array([[a] for a in input])
@@ -58,7 +58,7 @@ class NN:
             self.potentialsZ[wi+1] = z
 
         ret = self.potentials[len(self.weights)]
-        return [a[0] for a in ret]
+        return [ a[0] for a in ret]
 
     def __str__(self):
         return """=== NN ===

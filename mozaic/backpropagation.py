@@ -7,6 +7,21 @@ def update_net(net, x, y, eta):
     delta_w = backprop(net, x, y)
     net.weights = [w - eta*dw for w, dw in zip(net.weights, delta_w)]
 
+def update_net_n(net, patterns, eta):
+    delta_w = None
+    n = 0
+    for pattern in patterns:
+        x, y = pattern
+        if delta_w:
+            delta_w += backprop(net, x, y)
+        else:
+            delta_w = backprop(net, x, y)
+        n += 1
+
+    delta_w = [d / n for d in delta_w]
+
+    net.weights = [w - eta * dw for w, dw in zip(net.weights, delta_w)]
+
 def backprop(net, x, y):
     """Return nabla_w representing the gradient of function C(x).
     This is array of weights deltas"""
