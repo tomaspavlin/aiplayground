@@ -5,7 +5,7 @@ import os
 # using 6x14 images
 
 chars = ['/', '\\', '|', '-', '_', '^', ' ']
-samplesDirectory = "imgs/src"
+samplesDirectory = "imgs/preprocessed"
 space_treshold = 0.6
 
 def get_pattern():
