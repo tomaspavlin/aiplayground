@@ -1,29 +1,32 @@
 import matplotlib.pyplot as plt
 
-import numpy as np
-from PIL import Image, ImageDraw
-import webbrowser
-import os
+from PIL import Image, ImageDraw, ImageFont
 
-
+background = (200, 200, 200)
 linecolor = (0,0,0)
 linewidth = 3
 nodecolor = (255,0,0)
-noderadius = 3
-zoom = 3
+noderadius = 1
+textcolor = (0, 0, 0)
+zoom = 60
+max_xy = 10
+size = (zoom*max_xy, zoom*max_xy)
 
 
-def visualize(grid, dots):
-    im = Image.new('RGB', (400, 400), (255, 255, 255))
+def visualize(grid, dots, text = ""):
+    im = Image.new('RGB',size , background)
     draw = ImageDraw.Draw(im)
 
-    _drawlines(draw, grid)
-    # _drawdots(draw, grid, 2)
     _drawdots(draw, dots, 1)
+
+    _drawlines(draw, grid)
+    #_drawdots(draw, grid, 2)
+
+    draw.text((0, 0), text, fill=textcolor)
 
     im.show()
     im.save("image.png")
-    print("Image saved")
+    #print("Image saved")
 
 def _drawlines(draw, grid):
     for iy in range(len(grid)):
@@ -70,4 +73,6 @@ if __name__ == "__main__":
         (50, 50)
     ]
 
-    visualize(arr, dots)
+    text = "Hello"
+
+    visualize(arr, dots, text)
