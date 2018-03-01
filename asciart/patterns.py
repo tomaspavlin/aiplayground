@@ -4,7 +4,10 @@ import os
 
 # using 6x14 images
 
+#chars = ['/', '\\', '|', '-', '_', ' ']
+
 chars = ['/', '\\', '|', '-', '_', '^', ' ']
+#chars = ['/', '\\', '|', '-', '_', ' ']
 samplesDirectory = "imgs/preprocessed"
 space_treshold = 0.6
 

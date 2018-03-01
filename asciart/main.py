@@ -9,10 +9,10 @@ import sys
 from nn import NN
 
 eta = 0.1
-iterations = 1000000
+iterations = 20000
 test_after = 5000
 
-lambda1 = 1
+lambda1 = 0.3
 
 lambda2After = int(iterations / 1.3) #40000
 lambda2 = 10

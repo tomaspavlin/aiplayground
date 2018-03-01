@@ -1,6 +1,9 @@
 # mine
 .idea/
-
+*.iml
+*.gz
+logs/
+mnist_data/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
