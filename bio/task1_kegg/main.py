@@ -28,7 +28,7 @@ data = np.log(data + 1)
 
 a = np.linspace(-3, 10, 1000)
 #b = gaussian(a, 0.01)
-c = [kernel_density(x, data, 0.05) for x in a]
+c = [kernel_density(x, data, 0.05) for x in a]x
 
 
 

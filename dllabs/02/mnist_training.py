@@ -14,7 +14,7 @@ class Network:
         self.session = tf.Session(graph = graph, config=tf.ConfigProto(inter_op_parallelism_threads=threads,
                                                                        intra_op_parallelism_threads=threads))
 
-    def construct(self, args):
+    def construct(self, args, epochs, batches_per_epoch):
         with self.session.graph.as_default():
             # Inputs
             self.images = tf.placeholder(tf.float32, [None, self.WIDTH, self.HEIGHT, 1], name="images")
@@ -26,28 +26,44 @@ class Network:
             output_layer = tf.layers.dense(hidden_layer, self.LABELS, activation=None, name="output_layer")
             self.predictions = tf.argmax(output_layer, axis=1)
 
-
             # Training
             loss = tf.losses.sparse_softmax_cross_entropy(self.labels, output_layer, scope="loss")
             global_step = tf.train.create_global_step()
-            self.training = tf.train.GradientDescentOptimizer(0.03).minimize(loss, global_step=global_step, name="training")
+
+            if args.learning_rate_final:
+                decay_rate = np.power(args.learning_rate_final / args.learning_rate, 1.0/(epochs - 1 if epochs > 1 else 1))
+            else:
+                decay_rate = 1
+
+            learning_rate = tf.train.exponential_decay(args.learning_rate, global_step,
+                                                       batches_per_epoch, decay_rate, staircase=True)
+
+
+            optimizer = {
+                'SGD': tf.train.MomentumOptimizer(learning_rate, args.momentum)
+                            if args.momentum else tf.train.GradientDescentOptimizer(learning_rate),
+                'Adam': tf.train.AdamOptimizer(learning_rate)
+            }[args.optimizer]
+
+
+
+            self.training = optimizer.minimize(loss, global_step=global_step, name="training")
 
             # Summaries
             accuracy = tf.reduce_mean(tf.cast(tf.equal(self.labels, self.predictions), tf.float32))
-            confusion_matrix = tf.reshape(tf.confusion_matrix(self.labels, self.predictions,
-                                                              weights=tf.not_equal(self.labels, self.predictions), dtype=tf.float32),
-                                          [1, self.LABELS, self.LABELS, 1])
+            self.accuracy = accuracy
 
             summary_writer = tf.contrib.summary.create_file_writer(args.logdir, flush_millis=10 * 1000)
             self.summaries = {}
             with summary_writer.as_default(), tf.contrib.summary.record_summaries_every_n_global_steps(100):
                 self.summaries["train"] = [tf.contrib.summary.scalar("train/loss", loss),
-                                           tf.contrib.summary.scalar("train/accuracy", accuracy)]
+                                           tf.contrib.summary.scalar("train/accuracy", accuracy),
+                                           tf.contrib.summary.scalar("train/learning_rate", learning_rate)]
             with summary_writer.as_default(), tf.contrib.summary.always_record_summaries():
                 for dataset in ["dev", "test"]:
-                    self.summaries[dataset] = [tf.contrib.summary.scalar(dataset + "/accuracy", accuracy),
-                                               tf.contrib.summary.image(dataset + "/confusion_matrix", confusion_matrix)]
-
+                    self.summaries[dataset] = [
+                        tf.contrib.summary.scalar(dataset + "/accuracy", accuracy)
+                        ]
 
             # Initialize variables
             self.session.run(tf.global_variables_initializer())
@@ -60,11 +76,16 @@ class Network:
     def evaluate(self, dataset, images, labels):
         self.session.run(self.summaries[dataset], {self.images: images, self.labels: labels})
 
+    def get_accuracy(self, images, labels):
+        return self.session.run(self.accuracy, {self.images: images, self.labels: labels})
+
+
 
 if __name__ == "__main__":
     import argparse
     import datetime
     import os
+    import re
 
     # Fix random seed
     np.random.seed(42)
@@ -72,8 +93,13 @@ if __name__ == "__main__":
     # Parse arguments
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", default=50, type=int, help="Batch size.")
-    parser.add_argument("--epochs", default=10, type=int, help="Number of epochs.")
-    parser.add_argument("--hidden_layer", default=100, type=int, help="Size of the hidden layer.")
+    parser.add_argument("--epochs", default=20, type=int, help="Number of epochs.")
+    parser.add_argument("--hidden_layer", default=200, type=int, help="Size of the hidden layer.")
+    parser.add_argument("--learning_rate", default=0.01, type=float, help="Initial learning rate.");
+    #parser.add_argument("--learning_rate_final", default=0.005, type=float, help="Final learning rate.");
+    parser.add_argument("--learning_rate_final", default=None, type=float, help="Final learning rate.");
+    parser.add_argument("--momentum", default=None, type=float, help="Momentum.");
+    parser.add_argument("--optimizer", default="SGD", type=str, help="Optimizer to use.");
     parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
     args = parser.parse_args()
 
@@ -81,23 +107,33 @@ if __name__ == "__main__":
     args.logdir = "logs/{}-{}-{}".format(
         os.path.basename(__file__),
         datetime.datetime.now().strftime("%Y-%m-%d_%H%M%S"),
-        ",".join(map(lambda arg:"{}={}".format(*arg), sorted(vars(args).items())))
+        ",".join(("{}={}".format(re.sub("(.)[^_]*_?", r"\1", key), value) for key, value in sorted(vars(args).items())))
     )
     if not os.path.exists("logs"): os.mkdir("logs") # TF 1.6 will do this by itself
 
     # Load the data
     from tensorflow.examples.tutorials import mnist
-    mnist = mnist.input_data.read_data_sets("mnist_data/", reshape=False, seed=42)
+    # Note that because of current ReCodEx limitations, the MNIST dataset must
+    # be read from the directory of the script -- that is why the "mnist_data/"
+    # from `mnist_example.py` has been changed to current directory ".".
+    #
+    # Additionally, loading of the dataset prints to stdout -- this loading message
+    # is part of expected output when evaluating on ReCodEx.
+    mnist = mnist.input_data.read_data_sets(".", reshape=False, seed=42)
+    batches_per_epoch = mnist.train.num_examples // args.batch_size
 
     # Construct the network
     network = Network(threads=args.threads)
-    network.construct(args)
+    network.construct(args, args.epochs, batches_per_epoch)
 
     # Train
     for i in range(args.epochs):
-        while mnist.train.epochs_completed == i:
+        for b in range(batches_per_epoch):
             images, labels = mnist.train.next_batch(args.batch_size)
             network.train(images, labels)
 
         network.evaluate("dev", mnist.validation.images, mnist.validation.labels)
     network.evaluate("test", mnist.test.images, mnist.test.labels)
+
+    accuracy = network.get_accuracy(mnist.test.images, mnist.test.labels) * 100
+    print("{:.2f}".format(accuracy))

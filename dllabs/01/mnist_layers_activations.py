@@ -46,6 +46,10 @@ class Network:
             global_step = tf.train.create_global_step()
             self.training = tf.train.GradientDescentOptimizer(0.03).minimize(loss, global_step=global_step, name="training")
 
+
+            # just something
+
+
             # Summaries
             accuracy = tf.reduce_mean(tf.cast(tf.equal(self.labels, self.predictions), tf.float32))
             confusion_matrix = tf.reshape(tf.confusion_matrix(self.labels, self.predictions,
