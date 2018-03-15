@@ -4,21 +4,29 @@ import kohonen
 from data import Dataset
 
 
-matrix_h = 3
+matrix_h = 4
 matrix_w = 5
 
 matrix_min_xy = 0
 matrix_max_xy = 255
 
-visualize_after = 200
+visualize_after = 1000
+visualize_image_after = 30000
 
 matrix = np.random.rand(matrix_h, matrix_w, 3) * (matrix_max_xy - matrix_min_xy) + matrix_min_xy
 
-dataset = Dataset("input.png")
+#image_filename = "woman.png"
+image_filename = "parrot.png"
+dataset = Dataset(image_filename)
 
 data = dataset.get_all()
+#visualized_data = dataset.get_every_nth(30)
+
+visualized_data = dataset.next_batch(1000)
 
 step = 0
+
+visualize.copy_image(image_filename, "out_image_original.png")
 
 while True:
     step += 1
@@ -45,8 +53,12 @@ while True:
 
     if step % visualize_after == 0:
         text = "Step={}\nalpha={:.2f}\nsigma={:.2f}".format(step, kohonen.alpha(step), kohonen.sigma(step))
-        print(text.replace("\n",", "))
-        visualize.visualize(matrix, data, text)
+        print(text.replace("\n", ", "))
+        visualize.visualize_grid(matrix, visualized_data, "out_grid.png", text)
+
+    if step % visualize_image_after == 0:
+        print("Image visualization")
+        visualize.visualize_image(data, dataset.image_size, "out_image.png", matrix)
 
 
     # TODO: image compressor, better visualization of 3D, then maybe visualise the map also with colors

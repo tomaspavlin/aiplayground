@@ -23,33 +23,56 @@ def neighbourhood_function(u, v, step):
     ret = np.exp(-dist/sig/sig)
     return ret
 
-def alg_step(matrix, data_sample, step):
-    # get random sample
-    #rand_item = data[np.random.randint(data_count)]
-    rand_item = data_sample
-
+def get_nearest_neuron(sample, matrix):
     nearest_x = 0
     nearest_y = 0
     nearest_dist = np.inf
+    nearest_value = None
 
-    # find nearest neuron
+    m2 = matrix - sample
+    m2 = np.linalg.norm(m2, axis=2)
+    idx = np.argmin(m2, axis=0)
+    mins = m2[idx, range(m2.shape[1])]
+    x = np.argmin(mins)
+    y = idx[x]
+    val = matrix[y][x]
+
+    return val, x, y
+
+    print(matrix)
+    print(val)
+
+    print((x, y))
+
     for y in range(matrix.shape[0]):
         for x in range(matrix.shape[1]):
             neur = matrix[y][x]
-            dist = np.linalg.norm(neur - rand_item)
+
+            dist = np.linalg.norm(neur - sample)
 
             if dist < nearest_dist:
                 nearest_dist = dist
                 nearest_x = x
                 nearest_y = y
+                nearest_value = neur
 
+    return nearest_value, nearest_x, nearest_y
+
+def alg_step(matrix, data_sample, step):
+    # get random sample
+    #rand_item = data[np.random.randint(data_count)]
+    #rand_item = data_sample
+
+
+    # find nearest neuron
+    _, nearest_x, nearest_y = get_nearest_neuron(data_sample, matrix)
 
     # modify neurons
     for y in range(matrix.shape[0]):
         for x in range(matrix.shape[1]):
             matrix[y][x] += alpha(step) * \
                             neighbourhood_function(np.array([x, y]), np.array([nearest_x, nearest_y]), step) * \
-                            (rand_item - matrix[y][x])
+                            (data_sample - matrix[y][x])
 
 
 if __name__ == "__main__":
