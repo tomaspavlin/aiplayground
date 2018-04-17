@@ -26,6 +26,26 @@ class Network:
     def predict(self, observations):
         return self.session.run(self.actions, {self.observations: [observations]})[0]
 
+def eval(env, network, episodes):
+
+    # Evaluate the episodes
+    total_score = 0
+    for episode in range(episodes):
+        observation = env.reset()
+        score = 0
+        for i in range(env.spec.timestep_limit):
+            observation, reward, done, info = env.step(network.predict(observation))
+            score += reward
+            if done:
+                break
+
+        total_score += score
+        #print("The episode {} finished with score {}.".format(episode + 1, score))
+
+    avg = total_score / episodes
+    return avg
+
+    #print("The average reward per episode was {:.2f}.".format(total_score / args.episodes))
 
 if __name__ == "__main__":
     # Parse arguments

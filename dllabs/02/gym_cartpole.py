@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 import numpy as np
 import tensorflow as tf
+import gym
+
+import gym
 
 class Network:
     OBSERVATIONS = 4
@@ -20,7 +23,7 @@ class Network:
 
 
             # mine
-            hidden_layer_size = 10
+            hidden_layer_size = 1
             hidden_layer_count = 1
 
             hidden_layer = self.observations
@@ -37,6 +40,10 @@ class Network:
             global_step = tf.train.create_global_step()
             self.training = tf.train.AdamOptimizer().minimize(loss, global_step=global_step, name="training")
 
+
+
+            self.eval_val = tf.placeholder(tf.float64, name='eval_val')
+
             # Summaries
             accuracy = tf.reduce_mean(tf.cast(tf.equal(self.labels, self.actions), tf.float32))
             summary_writer = tf.contrib.summary.create_file_writer(args.logdir, flush_millis=10 * 1000)
@@ -44,6 +51,7 @@ class Network:
                 self.summaries = [tf.contrib.summary.scalar("train/loss", loss),
                                   tf.contrib.summary.scalar("train/accuracy", accuracy)]
                 self.test_summaries = tf.contrib.summary.scalar("test/loss", loss)
+                self.eval_summaries = tf.contrib.summary.scalar("test/eval", self.eval_val)
 
             # Construct the saver
             tf.add_to_collection("end_points/observations", self.observations)
@@ -64,6 +72,31 @@ class Network:
     def test(self, observations, labels):
         self.session.run([self.test_summaries], {self.observations: observations, self.labels: labels})
 
+    def eval(self, env, episodes):
+
+        network = self
+        # Evaluate the episodes
+        total_score = 0
+        for episode in range(episodes):
+            observation = env.reset()
+            score = 0
+            for i in range(env.spec.timestep_limit):
+                ac = self.session.run(self.actions, {self.observations: [observation]})[0]
+
+                observation, reward, done, info = env.step(ac)
+                score += reward
+                if done:
+                    break
+
+            total_score += score
+            # print("The episode {} finished with score {}.".format(episode + 1, score))
+
+        avg = total_score / episodes
+
+        self.session.run([self.eval_summaries], {self.eval_val: avg})
+        return avg
+
+        # print("The average reward per episode was {:.2f}.".format(total_score / args.episodes))
 
 if __name__ == "__main__":
     import argparse
@@ -77,8 +110,8 @@ if __name__ == "__main__":
     # Parse arguments
     parser = argparse.ArgumentParser()
     #parser.add_argument("--epochs", default=20, type=int, help="Number of epochs.")
-    parser.add_argument("--epochs", default=100, type=int, help="Number of epochs.")
-    parser.add_argument("--threads", default=1, type=int, help="Maximum number of threads to use.")
+    parser.add_argument("--epochs", default=8, type=int, help="Number of epochs.")
+    parser.add_argument("--threads", default=4, type=int, help="Maximum number of threads to use.")
     args = parser.parse_args()
 
     # Create logdir name
@@ -98,11 +131,13 @@ if __name__ == "__main__":
             labels.append(int(columns[4]))
     observations, labels = np.array(observations), np.array(labels)
 
-    # TODO: splite to testing and training data
+    # Create the environment
+    env = gym.make('CartPole-v1')
+
     testsize = 0 # out of 100 data
 
-    observations_test, labels_test = observations[:20], labels[:20]
-    observations, labels = observations[20:], labels[20:]
+    observations_test, labels_test = observations, labels #observations[:20], labels[:20]
+    observations, labels = observations, labels #observations[20:], labels[20:]
 
     print("datalen: {}, {}".format(labels.shape, labels_test.shape))
 
@@ -112,7 +147,7 @@ if __name__ == "__main__":
 
     # Train
     batch_size = 1
-    batches_per_epoch = len(observations) // batch_size
+    batches_per_epoch = len(observations) // batch_size * 40
 
     for i in range(args.epochs):
         for ii in range(batches_per_epoch):
@@ -125,6 +160,10 @@ if __name__ == "__main__":
 
         #network.test(observations_test, labels_test)
         network.test(observations, labels)
+
+        print("...")
+        e = network.eval(env, 50)
+        print(f"Epoch {i}, eval: {e}")
 
 
     # Save the network

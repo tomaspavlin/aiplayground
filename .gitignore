@@ -4,6 +4,7 @@
 *.gz
 logs/
 mnist_data/
+*.npz
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

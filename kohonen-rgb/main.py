@@ -4,7 +4,7 @@ import kohonen
 from data import Dataset
 
 
-matrix_h = 4
+matrix_h = 3
 matrix_w = 5
 
 matrix_min_xy = 0
@@ -15,8 +15,8 @@ visualize_image_after = 30000
 
 matrix = np.random.rand(matrix_h, matrix_w, 3) * (matrix_max_xy - matrix_min_xy) + matrix_min_xy
 
-#image_filename = "woman.png"
-image_filename = "parrot.png"
+image_filename = "woman.png"
+#image_filename = "parrot.png"
 dataset = Dataset(image_filename)
 
 data = dataset.get_all()
@@ -27,6 +27,7 @@ visualized_data = dataset.next_batch(1000)
 step = 0
 
 visualize.copy_image(image_filename, "out_image_original.png")
+visualize.clear_image("out_image.png")
 
 while True:
     step += 1
@@ -55,6 +56,7 @@ while True:
         text = "Step={}\nalpha={:.2f}\nsigma={:.2f}".format(step, kohonen.alpha(step), kohonen.sigma(step))
         print(text.replace("\n", ", "))
         visualize.visualize_grid(matrix, visualized_data, "out_grid.png", text)
+        visualize.visualize_palette(matrix, "out_palette.png")
 
     if step % visualize_image_after == 0:
         print("Image visualization")

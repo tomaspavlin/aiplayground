@@ -3,21 +3,38 @@ import kohonen
 
 from PIL import Image, ImageDraw, ImageFont
 
+pallete_square_size = 20
 background = (100, 255, 100)
 linecolor = (0,0,0)
-linewidth = 3
+linewidth = 1
 nodecolor = (255,0,0)
-noderadius_grid = 3
-noderadius_dot = 1
+noderadius_grid = 1.5
+noderadius_dot = 0.5
 textcolor = (0, 0, 0)
-zoom = 1
+zoom = 0.6
 max_xy = 400
-size = (zoom*max_xy, zoom*max_xy)
+size = (int(zoom*max_xy), int(zoom*max_xy))
+axis_step = 10
 
 
 def visualize_grid(grid, dots, filename, text=""):
+
     im = Image.new('RGB', size, background)
     draw = ImageDraw.Draw(im)
+
+    # add axis
+    for i in range(3):
+        for ii in range(0, 256, axis_step):
+
+            for iii in range(3):
+                cc = [0, 0, 0]
+                if iii == i:
+                    cc[i] = ii
+                else:
+                    cc[i] = 255
+                    cc[iii] = ii
+
+                dots.append(cc)
 
     _drawdots(draw, dots, 1, noderadius_dot)
 
@@ -27,6 +44,18 @@ def visualize_grid(grid, dots, filename, text=""):
     draw.text((0, 0), text, fill=textcolor)
 
     im.show()
+    im.save(filename)
+
+
+def visualize_palette(grid, filename):
+    size = [a*pallete_square_size for a in grid.shape[:2]]
+
+    im = Image.new('RGB', size, (0, 0, 0))
+    draw = ImageDraw.Draw(im)
+
+    _drawsquares(draw, grid, pallete_square_size)
+
+    #im.show()
     im.save(filename)
 
 
@@ -55,7 +84,11 @@ def copy_image(from_file, to_file):
     im = Image.open(from_file)
     im.save(to_file)
 
+def clear_image(filename):
+    im = Image.open(filename)
 
+    im2 = Image.new('RGB', im.size, background)
+    im2.save(filename)
 
 
 
@@ -85,6 +118,18 @@ def _drawdots(draw, dots, dim, noderadius):
 
         draw.ellipse((p[0] * zoom - noderadius, p[1] * zoom - noderadius,
                       p[0] * zoom + noderadius, p[1] * zoom + noderadius), fill=color)
+
+def _drawsquares(draw, grid, squaresize):
+    for iy in range(len(grid)):
+        for ix in range(len(grid[iy])):
+            p = (iy * squaresize, ix * squaresize)
+
+            color = tuple(int(a) for a in grid[iy][ix])
+
+
+            draw.rectangle((p[0], p[1],
+                p[0] + squaresize, p[1] + squaresize),
+                fill=color)
 
 def _project3Dto2d(p):
 
