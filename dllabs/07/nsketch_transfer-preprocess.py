@@ -8,71 +8,7 @@ import tensorflow as tf
 
 import nets.nasnet.nasnet
 
-class Dataset:
-    def __init__(self, filename, shuffle_batches = True):
-        data = np.load(filename)
-        data = data['arr_0'].item()
-
-
-        self._images = data["images"]
-        self._labels = data["labels"] if "labels" in data else None
-        self._features = data["features"] if "features" in data else None
-
-        #print(filename)
-        #print(self._images.shape)
-
-        self._shuffle_batches = shuffle_batches
-        self._permutation = np.random.permutation(len(self._images)) if self._shuffle_batches else np.arange(len(self._images))
-
-
-    def save(self, filename):
-        data = dict()
-        data["images"] = self._images
-        if self._labels is not None:
-            data["labels"] = self._labels
-
-        if self._features is not None:
-            data["features"] = self._features
-
-        np.savez_compressed(filename, data)
-
-    def visualize(self):
-        import matplotlib.pyplot as plt
-        for image in self._images:
-            image = image.reshape(image.shape[0], image.shape[1])
-            plt.gray()
-            plt.imshow(image)
-            plt.show()
-            print(image.shape)
-
-    @property
-    def images(self):
-        return self._images
-
-    @property
-    def features(self):
-        return self._features
-
-    @property
-    def labels(self):
-        return self._labels
-
-    def next_batch(self, batch_size):
-        batch_size = min(batch_size, len(self._permutation))
-        batch_perm, self._permutation = self._permutation[:batch_size], self._permutation[batch_size:]
-        return self._images[batch_perm], \
-               self._features[batch_perm] if self._features is not None else None, \
-               self._labels[batch_perm] if self._labels is not None else None
-
-    def epoch_finished(self):
-        if len(self._permutation) == 0:
-            self._permutation = np.random.permutation(len(self._images)) if self._shuffle_batches else np.arange(len(self._images))
-            return True
-        return False
-
-    def set_features(self, features):
-        self._features = features
-
+from nsketch_transfer_dataset import Dataset
 
 class Network:
     WIDTH, HEIGHT = 224, 224
@@ -108,8 +44,7 @@ class Network:
             # - training is stored in `self.training`
             # - label predictions are stored in `self.predictions`
 
-            #self.features = tf.identity(features)
-            self.features = tf.placeholder(dtype=tf.float32, shape=(None, self.FEATURES))
+            self.features = tf.identity(features)
 
             #self.features = tf.layers.dropout(self.features, training=self.is_training, name="dropout")
 
@@ -190,7 +125,7 @@ class Network:
         while not dataset.epoch_finished():
             i += batch_size
             print(i)
-            images, _ = dataset.next_batch(batch_size)
+            images, _, _ = dataset.next_batch(batch_size)
             features.append(self.session.run(self.features, {self.images: images, self.is_training: False}))
         return np.concatenate(features)
 
@@ -221,7 +156,7 @@ if __name__ == "__main__":
     if not os.path.exists("logs"): os.mkdir("logs") # TF 1.6 will do this by itself
 
     # Load the data
-    #train = Dataset("nsketch-train.npz")
+    #train = Dataset("nsketch-train.npz", shuffle_batches=False)
     #dev = Dataset("nsketch-dev.npz", shuffle_batches=False)
     #test = Dataset("nsketch-test.npz", shuffle_batches=False)
 
@@ -247,23 +182,3 @@ if __name__ == "__main__":
         dataset.set_features(features)
         dataset.save("nsketch-{}-features.npz".format(name))
 
-
-    print("Training...")
-
-    # Train
-    for i in range(args.epochs):
-        print("Epoch {}".format(i + 1))
-        while not train.epoch_finished():
-            images, features, labels = train.next_batch(args.batch_size)
-            #print(".")
-            network.train_batch(images, features, labels)
-            #print("..")
-
-        accur = network.evaluate("dev", dev, args.batch_size)
-        print("{:.1f}".format(accur * 100))
-
-    # Predict test data
-    with open("{}/nsketch_transfer_test.txt".format(args.logdir), "w") as test_file:
-        labels = network.predict(test, args.batch_size)
-        for label in labels:
-            print(label, file=test_file)

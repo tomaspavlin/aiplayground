@@ -70,10 +70,29 @@ class Network:
             # by self.charseq_ids (using tf.nn.embedding_lookup).
             cle_ids = tf.nn.embedding_lookup(cle, self.charseq_ids) # probably not
 
-            #print(cles.shape)
+            #  CNNE
+
+            #character_embeddings = tf.get_variable("character_embeddings_cne", shape=(num_chars, args.cle_dim))
+            character_embeddings = char_embeddings
+            character_embeddings_charseqs = tf.nn.embedding_lookup(character_embeddings, self.charseqs)
+
+            max_pools = []
+            for kernel_size in range(2, args.cnne_max + 1):
+                conv_layer = tf.layers.conv1d(character_embeddings_charseqs,
+                                              filters=args.cnne_filters, kernel_size=kernel_size)
+                maxpool_layer = tf.layers.max_pooling1d(conv_layer, 100, 100,
+                                                        padding='same')
+                maxpool_layer = tf.squeeze(maxpool_layer, axis=1)
+                max_pools.append(maxpool_layer)
+
+            cnne = tf.concat(max_pools, axis=-1)
+            cnne_ids = tf.nn.embedding_lookup(cnne, self.charseq_ids)
+
+
 
             # TODO: Concatenate the word embeddings (computed above) and the CLE (in this order).
-            concatenated_embeddings = tf.concat((embedded_word_ids, cle_ids), axis=2)
+            #concatenated_embeddings = tf.concat((embedded_word_ids, cle_ids), axis=2)
+            concatenated_embeddings = tf.concat((cnne_ids, cle_ids), axis=2)
             #concatenated_embeddings = cle_ids
 
             # TODO(we): Using tf.nn.bidirectional_dynamic_rnn, process the embedded inputs.
@@ -171,6 +190,8 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--batch_size", default=10, type=int, help="Batch size.")
     parser.add_argument("--cle_dim", default=32, type=int, help="Character-level embedding dimension.")
+    parser.add_argument("--cnne_filters", default=16, type=int, help="CNN embedding filters per length.")
+    parser.add_argument("--cnne_max", default=4, type=int, help="Maximum CNN filter length.")
     parser.add_argument("--epochs", default=10, type=int, help="Number of epochs.")
     parser.add_argument("--recodex", default=False, action="store_true", help="ReCodEx mode.")
     parser.add_argument("--rnn_cell", default="LSTM", type=str, help="RNN cell type.")

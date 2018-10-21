@@ -12,7 +12,7 @@ class Network:
         self.session = tf.Session(graph = graph, config=tf.ConfigProto(inter_op_parallelism_threads=threads,
                                                                        intra_op_parallelism_threads=threads))
 
-    def construct(self, args, num_words, num_chars, num_tags):
+    def construct(self, args, num_words, num_chars, num_tags, max_chars_in_word):
         with self.session.graph.as_default():
             if args.recodex:
                 tf.get_variable_scope().set_initializer(tf.glorot_uniform_initializer(seed=42))
@@ -27,50 +27,83 @@ class Network:
 
             # TODO(we): Choose RNN cell class according to args.rnn_cell (LSTM and GRU
             # should be supported, using tf.nn.rnn_cell.{BasicLSTM,GRU}Cell).
+            num_units = args.rnn_cell_dim
+            cells = []
+            for i in range(2):
+                cells.append({
+                                 'lstm': tf.nn.rnn_cell.BasicLSTMCell(num_units, name="lstm_cell"),
+                                 'gru': tf.nn.rnn_cell.GRUCell(num_units, name="gru_cell")
+                             }[args.rnn_cell.lower()])
 
             # TODO(we): Create word embeddings for num_words of dimensionality args.we_dim
             # using `tf.get_variable`.
+            word_embeddings = tf.get_variable(name="word_embeddings", shape=[num_words, args.we_dim])
 
             # TODO(we): Embed self.word_ids according to the word embeddings, by utilizing
             # `tf.nn.embedding_lookup`.
+            word_embeddings_ids = tf.nn.embedding_lookup(word_embeddings, self.word_ids)
 
             # Convolutional word embeddings (CNNE)
 
             # TODO: Generate character embeddings for num_chars of dimensionality args.cle_dim.
+            character_embeddings = tf.get_variable("character_embeddings", shape=(num_chars, args.cle_dim))
 
             # TODO: Embed self.charseqs (list of unique words in the batch) using the character embeddings.
+            character_embeddings_charseqs = tf.nn.embedding_lookup(character_embeddings, self.charseqs)
 
             # TODO: For kernel sizes of {2..args.cnne_max}, do the following:
             # - use `tf.layers.conv1d` on input embedded characters, with given kernel size
             #   and `args.cnne_filters`; use `VALID` padding, stride 1 and no activation.
             # - perform channel-wise max-pooling over the whole word, generating output
             #   of size `args.cnne_filters` for every word.
+            max_pools = []
+
+            for kernel_size in range(2, args.cnne_max + 1):
+                conv_layer = tf.layers.conv1d(character_embeddings_charseqs,
+                                    filters=args.cnne_filters, kernel_size=kernel_size)
+                maxpool_layer = tf.layers.max_pooling1d(conv_layer, 100, 100,
+                                                        padding='same')
+                maxpool_layer = tf.squeeze(maxpool_layer, axis=1)
+                max_pools.append(maxpool_layer)
 
             # TODO: Concatenate the computed features (in the order of kernel sizes 2..args.cnne_max).
             # Consequently, each word from `self.charseqs` is represented using convolutional embedding
             # (CNNE) of size `(args.cnne_max-1)*args.cnne_filters`.
+            cnne = tf.concat(max_pools, axis=-1)
 
             # TODO: Generate CNNEs of all words in the batch by indexing the just computed embeddings
             # by self.charseq_ids (using tf.nn.embedding_lookup).
+            cnne_ids = tf.nn.embedding_lookup(cnne, self.charseq_ids)
 
             # TODO: Concatenate the word embeddings (computed above) and the CNNE (in this order).
+            #concat_emb_ids = tf.concat([word_embeddings_ids, cnne_ids], axis=2)
+            concat_emb_ids = cnne_ids
 
             # TODO(we): Using tf.nn.bidirectional_dynamic_rnn, process the embedded inputs.
             # Use given rnn_cell (different for fwd and bwd direction) and self.sentence_lens.
+            (rnn_fw, rnn_bw), _ = tf.nn.bidirectional_dynamic_rnn(cells[0], cells[1], concat_emb_ids,
+                                                                  sequence_length=self.sentence_lens,
+                                                                  dtype=tf.float32)
 
             # TODO(we): Concatenate the outputs for fwd and bwd directions (in the third dimension).
+            rnn = tf.concat((rnn_fw, rnn_bw), axis=2)
 
             # TODO(we): Add a dense layer (without activation) into num_tags classes and
             # store result in `output_layer`.
+            output_layer = tf.layers.dense(rnn, num_tags, name="output_layer")
 
             # TODO(we): Generate `self.predictions`.
+            self.predictions = tf.argmax(output_layer, axis=2)
 
             # TODO(we): Generate `weights` as a 1./0. mask of valid/invalid words (using `tf.sequence_mask`).
+            weights = tf.sequence_mask(self.sentence_lens, maxlen=tf.reduce_max(self.sentence_lens), dtype=tf.float32)
 
             # Training
 
             # TODO(we): Define `loss` using `tf.losses.sparse_softmax_cross_entropy`, but additionally
             # use `weights` parameter to mask-out invalid words.
+            loss = tf.losses.sparse_softmax_cross_entropy(self.tags, output_layer, weights=weights)
+
             global_step = tf.train.create_global_step()
             self.training = tf.train.AdamOptimizer().minimize(loss, global_step=global_step, name="training")
 
@@ -153,8 +186,9 @@ if __name__ == "__main__":
 
     # Construct the network
     network = Network(threads=args.threads)
+
     network.construct(args, len(train.factors[train.FORMS].words), len(train.factors[train.FORMS].alphabet),
-                      len(train.factors[train.TAGS].words))
+                      len(train.factors[train.TAGS].words), len([len(cs) for cs in train.factors[train.TAGS].charseqs]))
 
     # Train
     for i in range(args.epochs):

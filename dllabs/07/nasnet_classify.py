@@ -9,6 +9,9 @@ import tensorflow as tf
 import imagenet_classes
 import nets.nasnet.nasnet
 
+#import imagenet_classes
+#from .nets.nasnet import nasnet
+
 
 class Network:
     WIDTH, HEIGHT = 224, 224
@@ -31,6 +34,7 @@ class Network:
 
             with tf.contrib.slim.arg_scope(nets.nasnet.nasnet.nasnet_mobile_arg_scope()):
                 self.output_layer, _ = nets.nasnet.nasnet.build_nasnet_mobile(images, num_classes=self.CLASSES + 1, is_training=False)
+
             self.nasnet_saver = tf.train.Saver()
 
             self.predictions = tf.argmax(self.output_layer, axis=1) - 1

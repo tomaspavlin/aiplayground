@@ -26,9 +26,9 @@ class Network(object):
             self.visualizations = {}
             for vis_name in visualization_names:
                 self.visualizations[vis_name] = [
-                    tf.contrib.summary.image("visualization/" + vis_name, image_matrix_reshaped)
+                    tf.contrib.summary.image(("" if "/" in vis_name else "visualization/") + vis_name, image_matrix_reshaped)
                 ]
-                self.visualizations[vis_name] = tf.Print(self.visualizations[vis_name], [], f"Vizualization {vis_name}...")
+                #self.visualizations[vis_name] = tf.Print(self.visualizations[vis_name], [], f"Vizualization {vis_name}...")
 
 
             self.sess.run(tf.global_variables_initializer())

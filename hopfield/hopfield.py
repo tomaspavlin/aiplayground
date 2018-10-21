@@ -17,7 +17,6 @@ class Hopfield(object):
 
 
         self.c = image_matrix
-        w, h = self.c.shape
 
         # compute D
         print("Computing D")
@@ -68,6 +67,8 @@ class Hopfield(object):
                 TG = -2 * D[a, b] # a != b ??
 
                 T[a, b] = self.alpha * TL + (1 - self.alpha) * TG
+
+        T[4, 4] = 0 # ...
 
         return T
 

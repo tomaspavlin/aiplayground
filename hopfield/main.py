@@ -10,12 +10,13 @@ visualize_image_after = 5000
 
 #matrix = np.random.rand(matrix_h, matrix_w, 3) * (matrix_max_xy - matrix_min_xy) + matrix_min_xy
 
-#image_filename = "woman.png"
+image_filename = "woman.png"
 #image_filename = "parrot.png"
-image_filename = "parrot.png"
+#image_filename = "parrot.png"
 dataset = Dataset(image_filename)
 
-alpha = 0.99
+#alpha = 0.99
+alpha = 0.991
 
 strmost = 1
 strmost_increase_after = 25000 * 4

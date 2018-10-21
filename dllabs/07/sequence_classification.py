@@ -56,20 +56,32 @@ class Network:
             # TODO: Create RNN cell according to args.rnn_cell (RNN, LSTM and GRU should be supported,
             # using BasicRNNCell, BasicLSTMCell and GRUCell from tf.nn.rnn_cell module),
             # with dimensionality of args.rnn_cell_dim. Store the cell in `rnn_cell`.
+            if args.rnn_cell == "RNN":
+                rnn_cell = tf.nn.rnn_cell.BasicRNNCell(args.rnn_cell_dim)
+            elif args.rnn_cell == "LSTM":
+                rnn_cell = tf.nn.rnn_cell.BasicLSTMCell(args.rnn_cell_dim)
+            elif args.rnn_cell == "GRU":
+                rnn_cell = tf.nn.rnn_cell.GRUCell(args.rnn_cell_dim)
 
             # TODO: Process self.sequences using `tf.nn.dynamic_rnn` and `rnn_cell`,
             # store the outputs to `hidden_layer` and ignore output states.
+            hidden_layer, _ = tf.nn.dynamic_rnn(rnn_cell, self.sequences, dtype=tf.float32)
 
             # TODO: If args.hidden_layer, add a dense layer with `args.hidden_layer` neurons
             # and ReLU activation.
+            if args.hidden_layer:
+                hidden_layer = tf.layers.dense(hidden_layer, args.hidden_layer, activation=tf.nn.relu)
 
             # TODO: Add a dense layer with one output neuron, without activation, into `output_layer`
+            output_layer = tf.layers.dense(hidden_layer, 1)
 
             # TODO: Remove the third dimension from `output_layer` using `tf.squeeze`.
+            output_layer = tf.squeeze(output_layer, axis=2)
 
             # TODO: Generate self.predictions with either False/True according to whether
             # values in `output_layer` are less or grater than 0 (using `tf.greater_equal`).
             # This corresponds to rounding the probability of sigmoid applied to `output_layer`.
+            self.predictions = tf.greater_equal(output_layer, 0)
 
             # Training
             loss = tf.losses.sigmoid_cross_entropy(tf.cast(self.labels, tf.int32), output_layer)
@@ -79,8 +91,14 @@ class Network:
             # `optimizer.compute_gradients`, then optionally clip them and
             # finally apply then using `optimizer.apply_gradients`.
             gradients, variables = zip(*optimizer.compute_gradients(loss))
+
             # TODO: Compute norm of gradients using `tf.global_norm` into `gradient_norm`.
+            gradient_norm = tf.global_norm(gradients)
+
             # TODO: If args.clip_gradient, clip gradients (back into `gradients`) using `tf.clip_by_global_norm`.
+            if args.clip_gradient:
+                gradients, _ = tf.clip_by_global_norm(gradients, args.clip_gradient)
+
             self.training = optimizer.apply_gradients(zip(gradients, variables), global_step=global_step)
 
             # Summaries

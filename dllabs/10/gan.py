@@ -33,9 +33,14 @@ class Network:
                 # Consider the output of the last hidden layer to be the logits of
                 # individual pixels. Reshape them into a correct shape for a grayscale
                 # image of size self.WIDTH x self.HEIGHT and return them.
+                z = tf.layers.dense(z, 128, tf.nn.relu)
+                z = tf.layers.dense(z, self.HEIGHT * self.WIDTH, tf.nn.sigmoid)
+                z = tf.reshape(z, (-1, self.HEIGHT, self.WIDTH, 1))
+                return z
 
             with tf.variable_scope("generator"):
                 # TODO: Define `self.generated_images` as a result of `generator` applied to `self.z`.
+                self.generated_images = generator(self.z)
 
             # Discriminator
             def discriminator(image):
@@ -47,27 +52,40 @@ class Network:
                 # Consider the last hidden layer output to be the logit of whether the input
                 # images comes from real data. Change its shape to remove the last dimension
                 # (i.e., [batch_size] instead of [batch_size, 1]) and return it.
+                image = tf.layers.flatten(image)
+                image = tf.layers.dense(image, 128, tf.nn.relu)
+                image = tf.layers.dense(image, 1, None)
+                image = tf.reshape(image, [-1])
+                return image
 
             with tf.variable_scope("discriminator"):
                 # TODO: Define `discriminator_logit_real` as a result of
                 # `discriminator` applied to `self.images`.
+                discriminator_logit_real = discriminator(self.images)
 
             with tf.variable_scope("discriminator", reuse = True):
                 # TODO: Define `discriminator_logit_fake` as a result of
                 # `discriminator` applied to `self.generated_images`.
                 #
+                discriminator_logit_fake = discriminator(self.generated_images)
+
                 # TODO: Note the discriminator is called in the same variable
                 # scope as several lines above -- it will try to utilize the
                 # same variables. In order to allow reusing them, we need to explicitly
                 # pass the `reuse=True` flag.
 
+
             # Losses
             # TODO: Define `self.discriminator_loss` as a sum of
             # - sigmoid cross entropy loss with gold labels of ones (1.0) and discriminator_logit_real
             # - sigmoid cross entropy loss with gold labels of zeros (0.0) and discriminator_logit_fake
+            self.discriminator_loss = 0
+            self.discriminator_loss += tf.losses.sigmoid_cross_entropy(tf.ones(args.batch_size), discriminator_logit_real)
+            self.discriminator_loss += tf.losses.sigmoid_cross_entropy(tf.zeros(args.batch_size), discriminator_logit_fake)
 
             # TODO: Define `self.generator_loss` as a sigmoid cross entropy
             # loss with gold labels of ones (1.0) and discriminator_logit_fake.
+            self.generator_loss = tf.losses.sigmoid_cross_entropy(tf.ones(args.batch_size), discriminator_logit_fake)
 
             # Training
             global_step = tf.train.create_global_step()
@@ -75,10 +93,12 @@ class Network:
             # for discriminator_loss and variables in the "discriminator" namespace using
             # the option var_list=tf.global_variables("discriminator").
             # Do *not* pass global_step as argument to AdamOptimizer.minimize.
+            self.discriminator_training = tf.train.AdamOptimizer().minimize(self.discriminator_loss, var_list=tf.global_variables("discriminator"))
 
             # TODO: Create `self.generator_training` as an AdamOptimizer.minimize
             # for generator_loss and variables in "generator" namespace.
             # This time *do* pass global_step as argument to AdamOptimizer.minimize.
+            self.generator_training = tf.train.AdamOptimizer().minimize(self.generator_loss, var_list=tf.global_variables("generator"))
 
             # Summaries
             discriminator_accuracy = tf.reduce_mean(tf.to_float(tf.concat([
@@ -102,17 +122,23 @@ class Network:
     def sample_z(self, batch_size):
         # TODO: Return uniform random noise in -1, 1 range using `np.random.uniform`
         # call, with shape [batch_size, self.z_dim].
+        return np.random.uniform(-1, 1, [batch_size, self.z_dim])
 
     def train(self, images):
         # TODO: In first self.session.run, evaluate self.discriminator_training,
         # self.discriminator_summary and self.discriminator_loss using
         # `images` as `self.images` and noise sampled with `self.sample_z` as `self.z`.
+        _, _, d_loss = self.session.run([self.discriminator_training, self.discriminator_summary, self.discriminator_loss],
+                         {self.images: images, self.z: self.sample_z(images.shape[0])})
 
         # TODO: In second self.session.run, evaluate self.generator_training,
         # self.generator_summary and self.generator_loss using
         # noise sampled with `self.sample_z` as `self.z`.
+        _, _, g_loss = self.session.run([self.generator_training, self.generator_summary, self.generator_loss],
+                         {self.z: self.sample_z(images.shape[0])})
 
         # TODO: Return the sum of evaluated self.discriminator_loss and self.generator_loss.
+        return d_loss + g_loss
 
     def generate(self):
         GRID = 20
